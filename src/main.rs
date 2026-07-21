@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 use reqwest::{Client, Url};
 use teloxide::{
     Bot,
@@ -8,13 +11,11 @@ use teloxide::{
     },
 };
 
-#[macro_use]
-extern crate log;
+const PROMT_API_URL_VAR: &str = "PROMT_API_URL";
+const PREVIEW_LENGTH: usize = 80;
 
 type ErrorValue = Box<dyn std::error::Error + Send + Sync + 'static>;
 type BotResult<T = ()> = Result<T, ErrorValue>;
-
-const PROMT_API_URL_VAR: &str = "PROMT_API_URL";
 
 #[tokio::main]
 async fn main() -> BotResult {
@@ -40,19 +41,30 @@ async fn main() -> BotResult {
 }
 
 async fn inline(bot: Bot, q: InlineQuery, client: Client) -> BotResult {
-    let target_lang = "en"; // TODO: guess and/or add an option to override
+    let translation = if q.query.chars().count() > 2 {
+        let target_lang = "en"; // TODO: guess and/or add an option to override
 
-    let api_url = std::env::var(PROMT_API_URL_VAR).unwrap();
-    let api_url = Url::parse_with_params(&api_url, &[("to", target_lang)])?;
+        let api_url = std::env::var(PROMT_API_URL_VAR).unwrap();
+        let api_url = Url::parse_with_params(&api_url, &[("to", target_lang)])?;
 
-    let translation = client.post(api_url).body(q.query).send().await?;
-    let translation = translation.text().await?;
+        let translation = client.post(api_url).body(q.query).send().await?;
+        let translation = translation.text().await?;
+        trace!("trans: {translation}");
+        translation
+    } else {
+        String::new()
+    };
 
-    let result = InlineQueryResult::Article(InlineQueryResultArticle::new(
-        "0",
-        "ProMT",
-        InputMessageContent::Text(InputMessageContentText::new(translation)),
-    ));
+    let trimmed: String = translation.chars().take(PREVIEW_LENGTH).collect();
+
+    let result = InlineQueryResult::Article(
+        InlineQueryResultArticle::new(
+            "0",
+            "ProMT",
+            InputMessageContent::Text(InputMessageContentText::new(translation.to_string())),
+        )
+        .description(trimmed),
+    );
 
     let response = bot.answer_inline_query(q.id.clone(), vec![result]).send().await;
 
