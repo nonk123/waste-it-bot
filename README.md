@@ -1,0 +1,3 @@
+# waste-it-bot
+
+TODO: explain. It's a rough draft at this point...
