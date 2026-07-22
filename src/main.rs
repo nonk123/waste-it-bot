@@ -12,6 +12,7 @@ use teloxide::{
     },
     utils::markdown,
 };
+use tokio::task::JoinSet;
 
 const PROMT_API_URL_VAR: &str = "PROMT_API_URL";
 const PREVIEW_LENGTH: usize = 80;
@@ -59,11 +60,21 @@ async fn translate(client: Client, text: String, target_lang: String) -> BotResu
 }
 
 async fn inline(bot: Bot, q: InlineQuery, client: Client) -> BotResult {
+    let mut jobs = JoinSet::new();
+
     let target_langs = ["en", "ru"];
     let mut results = Vec::with_capacity(target_langs.len());
 
     for target_lang in target_langs {
-        let translation = translate(client.clone(), q.query.to_string(), target_lang.to_string()).await?;
+        let client = client.clone();
+        let query = q.query.to_string();
+        jobs.spawn(async move { (target_lang, translate(client, query, target_lang.to_string()).await) });
+    }
+
+    while let Some(result) = jobs.join_next().await {
+        let Ok((target_lang, Ok(translation))) = result else {
+            continue;
+        };
 
         let response = format!(
             "{}\n{}",
