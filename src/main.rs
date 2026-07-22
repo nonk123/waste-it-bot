@@ -9,8 +9,8 @@ use teloxide::{
     dispatching::{Dispatcher, UpdateFilterExt as _},
     requests::{Request as _, Requester as _},
     types::{
-        InlineQuery, InlineQueryResult, InlineQueryResultArticle, InputMessageContent, InputMessageContentText,
-        ParseMode, Update,
+        InlineQuery, InlineQueryResult, InlineQueryResultArticle, InputMessageContent,
+        InputMessageContentText, ParseMode, Update,
     },
     utils::markdown,
 };
@@ -65,13 +65,16 @@ async fn inline(bot: Bot, q: InlineQuery, client: Client) -> BotResult {
     let mut jobs = JoinSet::new();
 
     let target_langs = ["en", "ru"];
-
     let mut results = HashMap::new();
 
     for target_lang in target_langs {
         let client = client.clone();
         let query = q.query.to_string();
-        jobs.spawn(async move { (target_lang, translate(client, query, target_lang.to_string()).await) });
+
+        jobs.spawn(async move {
+            let trans = translate(client, query, target_lang.to_string()).await;
+            (target_lang, trans)
+        });
     }
 
     while let Some(result) = jobs.join_next().await {
@@ -85,7 +88,8 @@ async fn inline(bot: Bot, q: InlineQuery, client: Client) -> BotResult {
             markdown::escape(&translation)
         );
 
-        let trimmed: String = translation.chars().take(PREVIEW_LENGTH).collect();
+        let response = InputMessageContentText::new(response).parse_mode(ParseMode::MarkdownV2);
+        let description: String = translation.chars().take(PREVIEW_LENGTH).collect();
 
         results.insert(
             target_lang,
@@ -93,15 +97,15 @@ async fn inline(bot: Bot, q: InlineQuery, client: Client) -> BotResult {
                 InlineQueryResultArticle::new(
                     target_lang,
                     format!("ProMT → {}", target_lang),
-                    InputMessageContent::Text(InputMessageContentText::new(response).parse_mode(ParseMode::MarkdownV2)),
+                    InputMessageContent::Text(response),
                 )
-                .description(trimmed),
+                .description(description),
             ),
         );
     }
 
     let mut results: Vec<_> = results.into_iter().collect();
-    results.sort_by(|a, b| a.0.cmp(b.0));
+    results.sort_by_key(|x| x.0);
 
     let results: Vec<_> = results.into_iter().map(|(_, res)| res).collect();
     let response = bot.answer_inline_query(q.id.clone(), results).send().await;
