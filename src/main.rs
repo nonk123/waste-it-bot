@@ -7,8 +7,10 @@ use teloxide::{
     dispatching::{Dispatcher, UpdateFilterExt as _},
     requests::{Request as _, Requester as _},
     types::{
-        InlineQuery, InlineQueryResult, InlineQueryResultArticle, InputMessageContent, InputMessageContentText, Update,
+        InlineQuery, InlineQueryResult, InlineQueryResultArticle, InputMessageContent, InputMessageContentText,
+        ParseMode, Update,
     },
+    utils::markdown,
 };
 
 const PROMT_API_URL_VAR: &str = "PROMT_API_URL";
@@ -62,13 +64,20 @@ async fn inline(bot: Bot, q: InlineQuery, client: Client) -> BotResult {
 
     for target_lang in target_langs {
         let translation = translate(client.clone(), q.query.to_string(), target_lang.to_string()).await?;
+
+        let response = format!(
+            "{}\n{}",
+            markdown::blockquote(&markdown::escape(&q.query)),
+            markdown::escape(&translation)
+        );
+
         let trimmed: String = translation.chars().take(PREVIEW_LENGTH).collect();
 
         results.push(InlineQueryResult::Article(
             InlineQueryResultArticle::new(
                 target_lang,
                 format!("ProMT → {}", target_lang),
-                InputMessageContent::Text(InputMessageContentText::new(translation.to_string())),
+                InputMessageContent::Text(InputMessageContentText::new(response).parse_mode(ParseMode::MarkdownV2)),
             )
             .description(trimmed),
         ));
