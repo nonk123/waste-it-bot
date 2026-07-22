@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate log;
 
+use std::collections::HashMap;
+
 use reqwest::{Client, Url};
 use teloxide::{
     Bot,
@@ -63,7 +65,8 @@ async fn inline(bot: Bot, q: InlineQuery, client: Client) -> BotResult {
     let mut jobs = JoinSet::new();
 
     let target_langs = ["en", "ru"];
-    let mut results = Vec::with_capacity(target_langs.len());
+
+    let mut results = HashMap::new();
 
     for target_lang in target_langs {
         let client = client.clone();
@@ -84,16 +87,23 @@ async fn inline(bot: Bot, q: InlineQuery, client: Client) -> BotResult {
 
         let trimmed: String = translation.chars().take(PREVIEW_LENGTH).collect();
 
-        results.push(InlineQueryResult::Article(
-            InlineQueryResultArticle::new(
-                target_lang,
-                format!("ProMT → {}", target_lang),
-                InputMessageContent::Text(InputMessageContentText::new(response).parse_mode(ParseMode::MarkdownV2)),
-            )
-            .description(trimmed),
-        ));
+        results.insert(
+            target_lang,
+            InlineQueryResult::Article(
+                InlineQueryResultArticle::new(
+                    target_lang,
+                    format!("ProMT → {}", target_lang),
+                    InputMessageContent::Text(InputMessageContentText::new(response).parse_mode(ParseMode::MarkdownV2)),
+                )
+                .description(trimmed),
+            ),
+        );
     }
 
+    let mut results: Vec<_> = results.into_iter().collect();
+    results.sort_by(|a, b| a.0.cmp(b.0));
+
+    let results: Vec<_> = results.into_iter().map(|(_, res)| res).collect();
     let response = bot.answer_inline_query(q.id.clone(), results).send().await;
 
     if let Err(err) = response {
