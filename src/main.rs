@@ -12,7 +12,7 @@ use teloxide::{
         InlineQuery, InlineQueryResult, InlineQueryResultArticle, InputMessageContent,
         InputMessageContentText, ParseMode, Update,
     },
-    utils::markdown,
+    utils::markdown as md,
 };
 use tokio::task::JoinSet;
 
@@ -82,11 +82,8 @@ async fn inline(bot: Bot, q: InlineQuery, client: Client) -> BotResult {
             continue;
         };
 
-        let response = format!(
-            "{}\n{}",
-            markdown::blockquote(&markdown::escape(&q.query)),
-            markdown::escape(&translation)
-        );
+        let quote = md::blockquote(&md::escape(&q.query));
+        let response = format!("{}\n{}", quote, md::escape(&translation));
 
         let response = InputMessageContentText::new(response).parse_mode(ParseMode::MarkdownV2);
         let description: String = translation.chars().take(PREVIEW_LENGTH).collect();
