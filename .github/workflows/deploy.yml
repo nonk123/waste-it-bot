@@ -54,8 +54,6 @@ jobs:
       - name: Redeploy Portainer stack
         uses: nonk123/redeploy-portainer-stack@master
         with:
-          url: ${{ secrets.PORTAINER_URL }}
+          url: ${{ secrets.PORTAINER_STACK_URL }}
           username: ${{ secrets.PORTAINER_USERNAME }}
           password: ${{ secrets.PORTAINER_PASSWORD }}
-          stack_id: ${{ secrets.PORTAINER_STACK_ID }}
-          endpoint_id: ${{ secrets.PORTAINER_ENDPOINT_ID }}
