@@ -1,22 +1,22 @@
 version: 2
+
+multi-ecosystem-groups:
+  sybau:
+    schedule:
+      interval: monthly
+
 updates:
-  - package-ecosystem: cargo
+  - package-ecosystem: docker
     directory: /
-    schedule: { interval: weekly }
-    groups:
-      sybau:
-        patterns: ["*"]
+    multi-ecosystem-group: sybau
+    patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: weekly }
-    groups:
-      sybau:
-        patterns: ["*"]
+    multi-ecosystem-group: sybau
+    patterns: ["*"]
 
-  - package-ecosystem: docker
+  - package-ecosystem: cargo
     directory: /
-    schedule: { interval: weekly }
-    groups:
-      sybau:
-        patterns: ["*"]
+    multi-ecosystem-group: sybau
+    patterns: ["*"]
